@@ -12,6 +12,19 @@ vi.mock('node:child_process', async (importOriginal) => {
 })
 
 describe('installer preparation preserves application dependencies', () => {
+  it.each(['x64', 'arm64'])('builds a local Linux %s AppImage without release services', async (arch) => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({ DSH_DESKTOP_APP_ID: 'com.deepseek.harness',
+      DSH_DESKTOP_TARGET_PLATFORM: 'linux', DSH_DESKTOP_TARGET_ARCH: arch, DSH_DESKTOP_LOCAL: '1' }, 'linux', arch)
+    expect(config.linux).toMatchObject({ target: ['AppImage'], executableName: 'deepseek-harness' })
+    expect(config.artifactName).toBe(`deepseek-harness-\${version}-linux-${arch}.\${ext}`)
+    expect(config.asar).toBe(false)
+    expect(config.publish).toBeNull()
+    expect(config.extraMetadata.dshMandatoryUpdatePolicy).toBeUndefined()
+    expect(config.directories.output).toContain(`linux-${arch}`)
+    expect(config.asarUnpack).toContain(`**/node_modules/@deepseek-ai/libreoffice-kit-linux-${arch}/**/*`)
+  })
+
   it.each(['win32', 'darwin'] as const)('rejects a missing production policy before signing on %s', async (platform) => {
     const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
     expect(() => createElectronBuilderConfig({ DSH_DESKTOP_APP_ID: 'com.example.installer',

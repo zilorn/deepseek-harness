@@ -48,7 +48,7 @@ async function fixture(
   await writeFile(join(repositoryRoot, 'package.json'), `${JSON.stringify({ version })}\n`)
   await writeFile(join(appRoot, 'package.json'), `${JSON.stringify({ version })}\n`)
 
-  const [os, arch] = target.split('-') as ['mac' | 'win', 'arm64' | 'x64']
+  const [os, arch] = target.split('-') as ['mac' | 'win' | 'linux', 'arm64' | 'x64']
   const base = `deepseek-harness-${version}-${os}-${arch}`
   const origin = environment === 'test'
     ? TEST_ORIGIN
@@ -70,6 +70,14 @@ async function fixture(
       version,
       path: `${base}.zip`,
       files: [{ url: `${base}.zip`, size: Buffer.byteLength(zip), sha512: digest(zip) }],
+    })}\n`)
+  }
+  else if (os === 'linux') {
+    const image = 'Linux AppImage fixture'
+    await writeFile(join(artifactsRoot, `${base}.AppImage`), image)
+    await writeFile(join(artifactsRoot, desktopUpdateMetadataFilename(version, 'linux', arch)), `${JSON.stringify({
+      version, path: `${base}.AppImage`,
+      files: [{ url: `${base}.AppImage`, size: Buffer.byteLength(image), sha512: digest(image) }],
     })}\n`)
   }
   else {
@@ -113,6 +121,17 @@ afterEach(async () => {
 })
 
 describe('desktop upload plan', () => {
+  it.each(['linux-x64', 'linux-arm64'] as const)('validates %s AppImage metadata without external blockmaps', async (target) => {
+    const paths = await fixture(target)
+    const plan = await createDesktopUploadPlan(target, paths)
+    expect(plan.artifacts[0]?.filename).toBe(`deepseek-harness-1.2.3-linux-${target.split('-')[1]}.AppImage`)
+    expect(plan.artifacts.some(artifact => artifact.filename.endsWith('.blockmap'))).toBe(false)
+    expect(plan.artifacts.some(artifact => artifact.filename === `nightly-linux${target === 'linux-arm64' ? '-arm64' : ''}.yml`)).toBe(true)
+    const latest = await createDesktopUploadPlan(target, { ...paths, latest: true })
+    expect(latest.artifacts).toHaveLength(1)
+    expect(latest.artifacts[0]?.filename).toBe(`dsh-latest-linux-${target.split('-')[1]}.AppImage`)
+  })
+
   it('uploads only the selected latest installer to each deployment using the existing COS transport', async () => {
     const published = []
     for (const environment of ['production', 'test'] as const) {

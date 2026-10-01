@@ -2075,6 +2075,21 @@ describe('desktop main startup', () => {
     expect(signal?.aborted).toBe(true)
   })
 
+  it('starts the packaged Linux Host with bundled Node and ordinary application files', async () => {
+    vi.stubGlobal('process', { ...process, platform: 'linux', arch: 'x64' })
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    expect(harness.hosts[0]).toMatchObject({
+      node: join('desktop-test-resources', 'runtime', 'primary-runtime', 'dependencies', 'node', 'bin', 'node'),
+      runtime: join(harness.app.getAppPath(), 'dsh'),
+      primaryRuntime: join('desktop-test-resources', 'runtime', 'primary-runtime'),
+    })
+    harness.hosts[0]!.ready.resolve()
+    await harness.navigated.promise
+  })
+
   it('prepares recovery offscreen and starts one Host before choosing the first visible window', async () => {
     await import('../src/main.ts')
     await harness.preparing.promise

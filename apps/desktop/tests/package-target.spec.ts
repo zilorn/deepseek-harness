@@ -9,6 +9,18 @@ import {
 } from '../scripts/package-target.ts'
 
 describe('desktop package target', () => {
+  it.each(['x64', 'arm64'])('packages a local Linux %s application on a matching host', (arch) => {
+    const invocation = parseDesktopPackageInvocation(['--local'], 'linux', arch)
+    expect(invocation).toMatchObject({ local: true, target: { name: `linux-${arch}`, platform: 'linux', arch } })
+    expect(desktopElectronBuilderArguments(invocation.target, false)).toContain('--linux')
+    expect(() => resolveDesktopPackageTarget(`linux-${arch}`, 'darwin', arch)).toThrow(/Linux/u)
+    expect(() => resolveDesktopPackageTarget(`linux-${arch}`, 'linux', arch === 'x64' ? 'arm64' : 'x64')).toThrow(/Linux/u)
+  })
+
+  it('rejects local builds for other platforms', () => {
+    expect(() => parseDesktopPackageInvocation(['--local'], 'darwin', 'arm64')).toThrow(/requires Linux/u)
+  })
+
   it('selects matching runtime and electron-builder architectures', () => {
     expect(resolveDesktopPackageTarget('mac-arm64', 'darwin', 'arm64')).toMatchObject({
       platform: 'darwin', arch: 'arm64', builderPlatform: '--mac', builderArch: '--arm64',
@@ -26,7 +38,7 @@ describe('desktop package target', () => {
   })
 
   it('rejects unsupported targets and hosts before building', () => {
-    expect(() => resolveDesktopPackageTarget('linux-x64', 'linux', 'x64')).toThrow(/unsupported target/u)
+    expect(() => resolveDesktopPackageTarget('linux-riscv64', 'linux', 'riscv64')).toThrow(/unsupported target/u)
     expect(() => resolveDesktopPackageTarget('win-x64', 'darwin', 'arm64')).toThrow(/Windows x64/u)
     expect(() => resolveDesktopPackageTarget('mac-arm64', 'darwin', 'x64')).toThrow(/Apple Silicon/u)
     expect(() => resolveDesktopPackageTarget('mac-arm64', 'linux', 'arm64')).toThrow(/macOS/u)
