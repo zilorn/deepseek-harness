@@ -3,7 +3,7 @@
 import { execFileSync } from 'node:child_process'
 import { chmodSync, cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { downloadArtifact } from '@electron/get'
 import extractZip from 'extract-zip'
@@ -19,20 +19,14 @@ const RUNTIME_ROOT = BUILD_PATHS.runtime
 
 type DesktopTarget = ReturnType<typeof desktopTargetPlatform>
 
-/** Extract Electron and return its embedded Node version when it supplies the runtime. */
+/** Download or reuse the cached Electron archive and return its Node version when it supplies the runtime. */
 async function prepareElectron({ platform, arch }: DesktopTarget): Promise<string | undefined> {
   const require = createRequire(import.meta.url)
   const { version } = require('electron/package.json') as { version: string }
-  if (process.env.DSH_DESKTOP_LOCAL === '1' && platform === 'linux') {
-    if (process.platform !== platform || process.arch !== arch) throw new Error('desktop runtime: local Linux builds require a matching host')
-    rmSync(BUILD_PATHS.electron, { recursive: true, force: true })
-    cpSync(join(dirname(require.resolve('electron/package.json')), 'dist'), BUILD_PATHS.electron, { recursive: true })
-  } else {
-    const archive = await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'download:electron',
-      () => downloadArtifact({ version, platform, arch, artifactName: 'electron', cacheRoot: BUILD_PATHS.downloads }))
-    rmSync(BUILD_PATHS.electron, { recursive: true, force: true })
-    await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'extract:electron', () => extractZip(archive, { dir: BUILD_PATHS.electron }))
-  }
+  const archive = await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'download:electron',
+    () => downloadArtifact({ version, platform, arch, artifactName: 'electron', cacheRoot: BUILD_PATHS.downloads }))
+  rmSync(BUILD_PATHS.electron, { recursive: true, force: true })
+  await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'extract:electron', () => extractZip(archive, { dir: BUILD_PATHS.electron }))
   if (platform === 'linux') return undefined
   const executable = join(BUILD_PATHS.electron, platform === 'win32' ? 'electron.exe' : 'Electron.app/Contents/MacOS/Electron')
   return execFileSync(executable, ['-p', 'process.versions.node'], {
