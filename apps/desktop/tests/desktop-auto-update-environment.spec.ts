@@ -40,7 +40,7 @@ describe('desktop auto-update environment', () => {
       DOWNLOAD_TEST_ORIGIN: 'https://desktop-updates.example.com/',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID,
     }, 'darwin', 'arm64')).toEqual({
-      environment: 'test',
+      environment: 'test', channel: 'nightly',
       target: 'mac-arm64',
       origin: 'https://desktop-updates.example.com',
       publicUrl: `https://desktop-updates.example.com/dsh-desk/${RELEASE_ID}/feeds/mac-arm64/`,
@@ -105,7 +105,8 @@ describe('desktop auto-update environment', () => {
 
   it.each(['x64', 'arm64'])('selects the Linux %s update feed', (arch) => {
     expect(resolveDesktopAutoUpdateTarget('linux', arch)).toBe(`linux-${arch}`)
-    expect(desktopUpdateMetadataFilename('1.2.3', 'linux', arch)).toBe(`nightly-linux${arch === 'x64' ? '' : '-arm64'}.yml`)
+    expect(desktopUpdateMetadataFilename('1.2.3', 'linux', 'nightly', arch)).toBe(`nightly-linux${arch === 'x64' ? '' : '-arm64'}.yml`)
+    expect(desktopUpdateMetadataFilename('1.2.3', 'linux', 'latest', arch)).toBe(`latest-linux${arch === 'x64' ? '' : '-arm64'}.yml`)
   })
 
   it('rejects unknown deployments and targets', () => {

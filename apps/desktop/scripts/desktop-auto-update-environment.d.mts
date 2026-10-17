@@ -10,6 +10,7 @@ export type DesktopAutoUpdateTarget = 'mac-arm64' | 'mac-x64' | 'win-x64' | 'lin
 /** Public updater URL and object prefixes for one release target. */
 export interface DesktopAutoUpdateConfig {
   readonly environment: DesktopAutoUpdateEnvironment
+  readonly channel: 'nightly' | 'latest'
   readonly target: DesktopAutoUpdateTarget
   readonly origin: string
   readonly publicUrl: string
@@ -55,12 +56,14 @@ export function desktopBuildRecordFilename(target: DesktopAutoUpdateTarget): str
  * Return the electron-builder channel metadata filename for an application version.
  * @param version - Desktop semantic version.
  * @param platform - Target platform.
+ * @param channel - Selected channel; omitted means nightly.
  * @param arch - Target architecture; Linux ARM64 uses its own metadata suffix.
  * @returns Channel metadata filename emitted for the target.
  */
 export function desktopUpdateMetadataFilename(
   version: string,
   platform: NodeJS.Platform,
+  channel?: 'nightly' | 'latest',
   arch?: string,
 ): string
 
@@ -91,3 +94,10 @@ export function resolveDesktopUploadConfig(
   platform: NodeJS.Platform,
   arch: string,
 ): DesktopUploadConfig
+
+/**
+ * Resolve the packaged update channel, defaulting omitted local settings to nightly.
+ * @param env Packaging settings.
+ * @returns Validated channel.
+ */
+export function resolveDesktopUpdateChannel(env: NodeJS.ProcessEnv): 'nightly' | 'latest'
