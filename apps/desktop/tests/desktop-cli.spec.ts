@@ -3,7 +3,7 @@
 import { delimiter, join } from 'node:path'
 import { afterEach, expect, it, vi } from 'vitest'
 import { runCli } from '@deepseek-ai/dsh/lib/bin.js'
-import { runDesktopCli } from '../../desktop-host/src/cli.ts'
+import { resolveDesktopCliSupportDirectory, runDesktopCli } from '../../desktop-host/src/cli.ts'
 import { installOfficeEngineResolution } from '../../desktop-host/src/office-engine.ts'
 
 vi.mock('@deepseek-ai/dsh/lib/bin.js', () => ({ runCli: vi.fn() }))
@@ -12,6 +12,24 @@ vi.mock('../../desktop-host/src/office-engine.ts', () => ({ installOfficeEngineR
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.clearAllMocks()
+})
+
+it.each([
+  { name: 'prepared', tree: ['dsh'], resources: [] },
+  { name: 'ASAR', tree: ['resources', 'app.asar', 'dsh'], resources: ['resources'] },
+  { name: 'unpacked Linux', tree: ['resources', 'app', 'dsh'], resources: ['resources'] },
+])('locates bundled pnpm outside the $name application tree', async ({ tree, resources }) => {
+  const root = 'Application 中文 with spaces'
+  const runtime = join(root, ...tree)
+  const support = resolveDesktopCliSupportDirectory(runtime)
+  expect(support).toBe(join(root, ...resources, 'runtime'))
+
+  await runDesktopCli(runtime, support)
+
+  expect(runCli).toHaveBeenCalledOnce()
+  expect(vi.mocked(runCli).mock.calls[0]?.[0]?.packageManager?.args).toEqual([
+    '--expose-internals', join(root, ...resources, 'runtime', 'primary-runtime', 'dependencies', 'pnpm', 'bin', 'pnpm.mjs'),
+  ])
 })
 
 it.each(['system-bin', undefined])('dispatches with bundled pnpm when PATH is %s', async (path) => {
