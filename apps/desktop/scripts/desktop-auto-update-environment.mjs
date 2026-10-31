@@ -36,6 +36,18 @@ const UPDATE_ENVIRONMENTS = {
 const UPDATE_TARGETS = new Set(['mac-arm64', 'mac-x64', 'win-x64', 'linux-x64', 'linux-arm64'])
 
 /**
+ * Name the fixed installer object shared by uploading and cache refresh.
+ * @param {'mac-arm64' | 'mac-x64' | 'win-x64' | 'linux-x64' | 'linux-arm64'} target Supported Desktop target.
+ * @returns {string} Fixed download filename.
+ */
+export function desktopLatestInstallerFilename(target) {
+  if (!UPDATE_TARGETS.has(target)) throw new Error(`desktop upload: unsupported target ${target}`)
+  const platform = target.startsWith('linux-') ? 'linux' : target === 'win-x64' ? 'windows' : 'macos'
+  const extension = target.startsWith('linux-') ? 'AppImage' : target === 'win-x64' ? 'exe' : 'dmg'
+  return `dsh-latest-${platform}-${target.endsWith('-arm64') ? 'arm64' : 'x64'}.${extension}`
+}
+
+/**
  * Resolve the update deployment, defaulting local release work to test.
  * @param {NodeJS.ProcessEnv} env - Packaging or upload environment.
  * @returns {'test' | 'production'} Validated deployment name.
@@ -100,7 +112,7 @@ export function desktopUpdateMetadataFilename(version, platform, channel = 'nigh
  * @param {string} name - Environment variable to read.
  * @returns {string} Trimmed setting.
  */
-function requiredEnvironmentValue(env, name) {
+export function requiredEnvironmentValue(env, name) {
   const value = env[name]?.trim()
   if (value === undefined || value === '') {
     throw new Error(`desktop auto-update: ${name} must be set to a non-empty value`)
